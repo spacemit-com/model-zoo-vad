@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>vad</name>
+  <version>0.1.0</version>
+  <description>Voice activity detection using ONNX Runtime</description>
+  <system_depend>onnxruntime</system_depend>
+  <system_depend>python3-spacemit-ort</system_depend>
+
+  <export>
+    <build_type>cmake</build_type>
+  </export>
+</package>
