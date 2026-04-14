@@ -62,11 +62,22 @@ sudo apt-get install -y build-essential cmake libcurl4-openssl-dev
 
 ```bash
 source build/envsetup.sh
+venv 3.13.12
 cd components/model_zoo/vad
 mm
 ```
 
-构建产物会安装到 `output/staging`。
+构建完成后，除安装到 `output/staging` 外，wheel 包也会输出到 SDK 根目录下的 `output/dist/`。例如：
+
+```bash
+output/dist/spacemit_vad-1.0.0-xxx.whl
+```
+
+如需在当前虚拟环境中安装该 Python 包，可执行：
+
+```bash
+pip install output/dist/spacemit_vad-1.0.0-xxx.whl
+```
 
 **运行**：运行前在 SDK 根目录执行 `source build/envsetup.sh`，使 PATH 与库路径指向 `output/staging`，然后可执行：
 
@@ -75,9 +86,10 @@ mm
 vad_simple_demo
 ```
 
-**Python 示例**（需已安装 Python 包或设置 PYTHONPATH 指向 SDK 构建产物）：
+**Python 示例**（推荐先安装 wheel 包）：
 ```bash
-python python/examples/vad_file_demo.py
+pip install output/dist/spacemit_vad-1.0.0-xxx.whl
+python vad/python/examples/vad_file_demo.py
 ```
 
 **流式检测**（若 SDK 构建时已开启流式示例）：
@@ -123,6 +135,7 @@ make -j$(nproc)
 | 产物 | 说明 |
 | ---- | ---- |
 | `include/vad_service.h` | **C++ API 头文件**，应用侧只需包含此头文件并链接下方库即可调用 |
+| `output/dist/spacemit_vad-1.0.0-xxx.whl` | Python wheel 包，可直接 `pip install` 后在业务代码中 `import spacemit_vad` |
 | `build/lib/libvad.a` | C++ 核心库，链接时使用 |
 | `build/lib/libsilero_vad.a` | Silero 后端库，链接时使用 |
 | `build/python/spacemit_vad/` | Python 包，`make vad-install-python` 安装后 `import spacemit_vad` |
@@ -149,7 +162,12 @@ engine->Start();
 engine->Stop();
 ```
 
-**Python**：安装后 `import spacemit_vad`，详见 `python/examples/` 与 [API.md](API.md)。
+**Python**：推荐优先安装构建出的 wheel 包后再使用，详见 `python/examples/` 与 [API.md](API.md)。
+
+```bash
+pip install output/dist/spacemit_vad-1.0.0-xxx.whl
+python vad/python/examples/vad_file_demo.py
+```
 
 ```python
 import spacemit_vad
