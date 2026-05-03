@@ -199,7 +199,12 @@ target_include_directories(your_target PRIVATE ${VAD_SOURCE_DIR}/include)
 
 ## 4. 常见问题
 
-暂无。如有问题可提交 Issue。
+| 现象 | 可能原因 | 处理 |
+| --- | --- | --- |
+| 一直检测为静音 | 设备无输入、采样率不匹配或阈值过高 | 先用 `audio_demo record` 录音回放，再降低 `trigger_threshold` 验证。 |
+| 背景噪声触发语音 | 阈值过低或环境噪声大 | 提高 `trigger_threshold`，增大平滑窗口，或在前级加入降噪。 |
+| 语音结束太慢 | `stop_threshold` 或状态平滑导致拖尾 | 适当提高 `stop_threshold` 或缩短业务侧静音等待。 |
+| barge-in 误触发 | TTS 回放泄漏到麦克风 | 使用外设硬件 AEC 或 `voice_chat_aec` 的 WebRTC AEC 模式。 |
 
 ## 5. 版本与发布
 
