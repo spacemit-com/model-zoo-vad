@@ -226,6 +226,40 @@ if(BUILD_VAD_PYTHON)
 
         message(STATUS "Python bindings enabled (_spacemit_vad module for Python ${Python3_VERSION})")
 
+        set(VAD_WHEEL_BUILD_ROOT "${CMAKE_BINARY_DIR}/python_wheel")
+        set(VAD_WHEEL_OUTPUT_DIR "${VAD_WHEEL_BUILD_ROOT}/dist")
+        set(VAD_WHEEL_CMAKE_BUILD_DIR "${VAD_WHEEL_BUILD_ROOT}/cmake")
+        set(VAD_WHEEL_SOURCE_DIR "${VAD_WHEEL_BUILD_ROOT}/src")
+        set(VAD_DIST_INSTALL_DIR "$ENV{SROBOTIS_OUTPUT_ROOT}/dist")
+        set(VAD_WHEEL_STAMP "${VAD_WHEEL_BUILD_ROOT}/wheel.stamp")
+        file(MAKE_DIRECTORY "${VAD_WHEEL_OUTPUT_DIR}")
+
+        add_custom_command(
+            OUTPUT ${VAD_WHEEL_STAMP}
+            COMMAND ${CMAKE_COMMAND} -E rm -rf ${VAD_WHEEL_OUTPUT_DIR}
+            COMMAND ${CMAKE_COMMAND} -E rm -rf ${VAD_WHEEL_SOURCE_DIR}
+            COMMAND ${CMAKE_COMMAND} -E make_directory ${VAD_WHEEL_OUTPUT_DIR}
+            COMMAND ${CMAKE_COMMAND} -E make_directory ${VAD_WHEEL_CMAKE_BUILD_DIR}
+            COMMAND ${CMAKE_COMMAND} -E copy_directory ${CMAKE_CURRENT_SOURCE_DIR}/python ${VAD_WHEEL_SOURCE_DIR}
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_CURRENT_SOURCE_DIR}/README.md ${VAD_WHEEL_SOURCE_DIR}/README.md
+            COMMAND ${CMAKE_COMMAND} -E chdir ${VAD_WHEEL_SOURCE_DIR}
+                ${CMAKE_COMMAND} -E env
+                SPACEMIT_PREBUILT_EXTENSION=$<TARGET_FILE:_spacemit_vad>
+                SPACEMIT_CMAKE_BUILD_DIR=${VAD_WHEEL_CMAKE_BUILD_DIR}
+                ${Python3_EXECUTABLE} -m pip wheel . --no-deps --wheel-dir ${VAD_WHEEL_OUTPUT_DIR}
+            COMMAND ${CMAKE_COMMAND} -E touch ${VAD_WHEEL_STAMP}
+            DEPENDS
+                _spacemit_vad
+                ${CMAKE_CURRENT_SOURCE_DIR}/README.md
+                ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py
+                ${CMAKE_CURRENT_SOURCE_DIR}/python/pyproject.toml
+                ${CMAKE_CURRENT_SOURCE_DIR}/python/spacemit_vad/__init__.py
+            VERBATIM
+            COMMENT "Building spacemit_vad wheel into ${VAD_WHEEL_OUTPUT_DIR}"
+        )
+
+        add_custom_target(vad-python-wheel ALL DEPENDS ${VAD_WHEEL_STAMP})
+
         # Get Python site-packages path
         execute_process(
             COMMAND ${Python3_EXECUTABLE} -c "import sysconfig; print(sysconfig.get_path('purelib'))"
@@ -241,6 +275,12 @@ if(BUILD_VAD_PYTHON)
             DEPENDS _spacemit_vad
             COMMENT "Installing spacemit_vad to ${PYTHON_SITE_PACKAGES}/spacemit_vad/"
         )
+
+        install(
+            DIRECTORY ${VAD_WHEEL_OUTPUT_DIR}/
+            DESTINATION ${VAD_DIST_INSTALL_DIR}
+            FILES_MATCHING PATTERN "*.whl"
+        )
     else()
         message(STATUS "Python bindings disabled (pybind11 not found)")
     endif()
@@ -254,4 +294,8 @@ message(STATUS "=== VAD Build Configuration ===")
 message(STATUS "  BUILD_VAD_EXAMPLES:  ${BUILD_VAD_EXAMPLES}")
 message(STATUS "  BUILD_VAD_PYTHON:    ${BUILD_VAD_PYTHON}")
 message(STATUS "  ONNX Runtime:        ${ONNXRUNTIME_LIB}")
+if(BUILD_VAD_PYTHON AND pybind11_FOUND)
+message(STATUS "  Wheel output:        ${VAD_WHEEL_OUTPUT_DIR}")
+message(STATUS "  Wheel install dir:   ${VAD_DIST_INSTALL_DIR}")
+endif()
 message(STATUS "")

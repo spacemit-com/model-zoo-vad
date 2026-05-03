@@ -1,19 +1,9 @@
-"""
-Space VAD Python Module Setup
-
-Build and install:
-    pip install .
-
-Development install:
-    pip install -e .
-
-Build wheel:
-    pip wheel . -w dist/
-"""
+"""Build hook for the spacemit_vad CMake extension."""
 
 import os
 import sys
 import subprocess
+import shutil
 from pathlib import Path
 
 from setuptools import setup, Extension, find_packages
@@ -33,7 +23,20 @@ class CMakeBuild(build_ext):
 
     def build_extension(self, ext):
         ext_dir = os.path.abspath(os.path.dirname(self.get_ext_fullpath(ext.name)))
-        build_dir = os.path.join(ext.source_dir, "build")
+        prebuilt_extension = os.environ.get("SPACEMIT_PREBUILT_EXTENSION")
+        if prebuilt_extension:
+            prebuilt_path = Path(prebuilt_extension)
+            if not prebuilt_path.exists():
+                raise FileNotFoundError(f"Prebuilt extension not found: {prebuilt_extension}")
+            os.makedirs(ext_dir, exist_ok=True)
+            shutil.copy2(prebuilt_path, os.path.join(ext_dir, prebuilt_path.name))
+            return
+
+        build_dir = os.environ.get(
+            "SPACEMIT_CMAKE_BUILD_DIR",
+            os.path.join(self.build_temp, ext.name.replace(".", "_"), "cmake"),
+        )
+        build_dir = os.path.abspath(build_dir)
 
         # Create build directory
         os.makedirs(build_dir, exist_ok=True)
@@ -44,7 +47,6 @@ class CMakeBuild(build_ext):
             with open(cache_file, 'r') as f:
                 content = f.read()
                 if ext.source_dir not in content:
-                    import shutil
                     shutil.rmtree(build_dir)
                     os.makedirs(build_dir, exist_ok=True)
 
@@ -52,6 +54,7 @@ class CMakeBuild(build_ext):
         cmake_args = [
             f"-DCMAKE_LIBRARY_OUTPUT_DIRECTORY={ext_dir}",
             f"-DPYTHON_EXECUTABLE={sys.executable}",
+            f"-DPython3_EXECUTABLE={sys.executable}",
             "-DBUILD_VAD_PYTHON=ON",
         ]
 
@@ -78,10 +81,9 @@ class CMakeBuild(build_ext):
             cwd=build_dir
         )
 
-        # For editable installs, also copy to source spacemit_vad package
+        # Only copy into the source package for explicit in-place workflows.
         pkg_dir = os.path.join(os.path.dirname(__file__), "spacemit_vad")
-        if os.path.exists(pkg_dir):
-            import shutil
+        if self.inplace and os.path.exists(pkg_dir):
             for suffix in [".so", ".dylib", ".pyd"]:
                 pattern = f"_spacemit_vad*{suffix}"
                 for path in Path(ext_dir).glob(pattern):
@@ -90,53 +92,8 @@ class CMakeBuild(build_ext):
                     break
 
 
-# Read version from C++ header
-def get_version():
-    return "1.0.0"
-
-
-# Read long description
-def get_long_description():
-    readme = Path(__file__).parent / "README.md"
-    if readme.exists():
-        return readme.read_text()
-    return "Space VAD Python bindings for Voice Activity Detection"
-
-
 setup(
-    name="spacemit_vad",
-    version=get_version(),
-    author="SpacemiT",
-    author_email="promuggle@gmail.com",
-    description="Space VAD (Voice Activity Detection) Python bindings",
-    long_description=get_long_description(),
-    long_description_content_type="text/markdown",
-    url="https://github.com/spacemit/vad",
     packages=find_packages(),
     ext_modules=[CMakeExtension("spacemit_vad._spacemit_vad", source_dir="..")],
     cmdclass={"build_ext": CMakeBuild},
-    python_requires=">=3.8",
-    install_requires=[
-        "numpy>=1.19.0",
-    ],
-    extras_require={
-        "dev": [
-            "pytest>=6.0",
-            "scipy>=1.5.0",
-        ],
-    },
-    classifiers=[
-        "Development Status :: 4 - Beta",
-        "Intended Audience :: Developers",
-        "License :: OSI Approved :: MIT License",
-        "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
-        "Programming Language :: Python :: 3.10",
-        "Programming Language :: Python :: 3.11",
-        "Programming Language :: Python :: 3.12",
-        "Programming Language :: C++",
-        "Topic :: Multimedia :: Sound/Audio :: Speech",
-    ],
-    keywords="vad voice activity detection silero",
 )
